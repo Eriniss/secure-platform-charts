@@ -1,0 +1,30 @@
+USER-SUPPLIED VALUES:
+alloy:
+  enabled: false
+engines:
+  local:
+    hostpath:
+      enabled: false
+    zfs:
+      enabled: false
+  replicated:
+    mayastor:
+      enabled: false
+loki:
+  enabled: false
+lvm-localpv:
+  csi:
+    volumeSnapshots:
+      enabled: true
+  lvmController:
+    nodeSelector:
+      openebs.io/lvm-ready: "true"
+    snapshotController:
+      enabled: false
+  lvmNode:
+    nodeSelector:
+      openebs.io/lvm-ready: "true"
+openebs-crds:
+  csi:
+    volumeSnapshots:
+      enabled: false
