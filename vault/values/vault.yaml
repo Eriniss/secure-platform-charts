@@ -1,9 +1,9 @@
 global:
   enabled: true
-  tlsDisable: true   # 클러스터 내부 전용, TLS 종단은 생략 (아래 트레이드오프 참고)
+  tlsDisable: true
 
 injector:
-  enabled: false      # Vault Agent 자동 주입 안 쓸 거면 리소스 절약 차원에서 끄기
+  enabled: false
 
 server:
   resources:
@@ -11,12 +11,12 @@ server:
       memory: 256Mi
       cpu: 100m
     limits:
-      memory: 512Mi   # OOMKill로 raft/boltdb 손상 나는 걸 피하려면 여유 좀 주는 게 안전
+      memory: 512Mi
 
   dataStorage:
     enabled: true
     size: 5Gi
-    storageClass: openebs-lvm-thin   # 이미 클러스터 기본 SC라 생략해도 되지만 명시 권장
+    storageClass: openebs-lvm-thin
     accessMode: ReadWriteOnce
 
   standalone:

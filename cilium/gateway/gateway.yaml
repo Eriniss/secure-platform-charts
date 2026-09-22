@@ -12,3 +12,15 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.polipixel.link"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+       certificateRefs:
+        - kind: Secret
+          group: ""
+          name: polipixel-tls

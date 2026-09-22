@@ -7,7 +7,7 @@ spec:
   parentRefs:
     - name: default-gateway
       namespace: gateway
-      sectionName: http
+      sectionName: https
   hostnames:
     - "vault.polipixel.link"
   rules:
