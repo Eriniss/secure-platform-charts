@@ -1,0 +1,17 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-example
+  namespace: default
+spec:
+  instances: 3
+  storage:
+    size: 1Gi
+  managed:
+    roles:
+      - name: vault
+        ensure: present
+        login: true
+        createrole: true        # 다른 계정의 비밀번호를 바꾸려면 필요
+        passwordSecret:
+          name: vault-pg-admin
