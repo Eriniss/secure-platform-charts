@@ -1,0 +1,8 @@
+# USER-SUPPLIED VALUES:
+configs:
+  params:
+    server.insecure: true
+
+# 로그아웃 시 해당 주소로 리다이렉트
+global:
+  domain: argocd.polipixel.link
