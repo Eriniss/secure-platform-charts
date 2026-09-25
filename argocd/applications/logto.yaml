@@ -11,7 +11,7 @@ spec:
     path: logto/charts
     helm:
       valueFiles:
-        - manifests/values-cnpg-dedicated.yamlanifests/values-cnpg-dedicated.yamlanifests/values-cnpg-dedicated.yaml
+        - manifests/values-cnpg-dedicated.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: logto
