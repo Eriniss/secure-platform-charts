@@ -1,0 +1,45 @@
+{{/*
+Logto 전용 CNPG Cluster (cnpg.cluster.create=true, 기본값이자 권장 경로).
+기존 공용 CNPG 클러스터를 쓰려면 cnpg.cluster.create=false 로 두세요 -
+이 파일 대신 cnpg/database.yaml(Database CR)만 생성됩니다.
+*/}}
+{{- if and .Values.cnpg.enabled .Values.cnpg.cluster.create -}}
+{{- $storage := dict "size" .Values.cnpg.cluster.storage.size -}}
+{{- if .Values.cnpg.cluster.storage.storageClass -}}
+{{- $_ := set $storage "storageClass" .Values.cnpg.cluster.storage.storageClass -}}
+{{- end -}}
+{{- $base := dict
+    "instances" .Values.cnpg.cluster.instances
+    "storage" $storage
+    "bootstrap" (dict "initdb" (dict "database" .Values.cnpg.database.name "owner" .Values.cnpg.database.owner))
+-}}
+{{- if .Values.cnpg.cluster.imageName -}}
+{{- $_ := set $base "imageName" .Values.cnpg.cluster.imageName -}}
+{{- end -}}
+{{- if .Values.cnpg.cluster.resources -}}
+{{- $_ := set $base "resources" .Values.cnpg.cluster.resources -}}
+{{- end -}}
+{{- if .Values.cnpg.cluster.monitoring.enablePodMonitor -}}
+{{- $_ := set $base "monitoring" (dict "enablePodMonitor" true) -}}
+{{- end -}}
+{{- if .Values.cnpg.cluster.backup.enabled -}}
+{{- $_ := set $base "backup" (dict "barmanObjectStore" .Values.cnpg.cluster.backup.barmanObjectStore) -}}
+{{- end -}}
+{{- if .Values.cnpg.cluster.ownerCreateRole -}}
+{{/* CNPG 공식 예시(cluster-example-with-roles.yaml)와 동일한 패턴: bootstrap owner와
+같은 이름의 managed role을 선언해 속성(createrole 등)을 추가로 부여합니다.
+passwordSecret을 지정하지 않으므로 비밀번호는 건드리지 않고 속성만 반영됩니다. */}}
+{{- $_ := set $base "managed" (dict "roles" (list (dict "name" .Values.cnpg.database.owner "ensure" "present" "login" true "createrole" true))) -}}
+{{- end -}}
+{{- $merged := mergeOverwrite $base .Values.cnpg.cluster.extraSpec -}}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "logto.cnpgClusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logto.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cnpg
+spec:
+{{ toYaml $merged | indent 2 }}
+{{- end -}}

@@ -1,0 +1,22 @@
+apiVersion: v2
+name: logto
+description: >-
+  Logto identity/IAM 플랫폼을 위한 Helm 차트. 기본값은 차트 내장 단독 PostgreSQL(StatefulSet)로
+  빠르게 시작할 수 있도록 하되, 프로덕션에서는 CloudNativePG(CNPG) 연동을 권장합니다.
+  Ingress/Gateway API 리소스는 의도적으로 포함하지 않으며, 별도 매니페스트로 관리하도록 유도합니다.
+type: application
+version: 0.1.4
+appVersion: "1.43.0"
+keywords:
+  - logto
+  - iam
+  - sso
+  - oidc
+  - identity
+  - cloudnativepg
+  - cnpg
+home: https://logto.io
+sources:
+  - https://github.com/logto-io/logto
+maintainers:
+  - name: Eriniss

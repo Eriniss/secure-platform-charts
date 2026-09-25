@@ -1,0 +1,20 @@
+{{- if .Values.postgresql.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "logto.postgresqlFullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logto.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  clusterIP: None
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+      protocol: TCP
+  selector:
+    {{- include "logto.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+{{- end -}}

@@ -1,0 +1,27 @@
+{{/*
+PgBouncer Pooler (선택). 주의: CNPG가 자동 생성하는 "<cluster>-app" Secret의 host는
+항상 "<cluster>-rw" 서비스를 가리킵니다. Pooler를 실제로 경유하게 하려면, DB_URL이
+"<cluster>-pooler" 서비스를 가리키도록 별도 Secret을 만들어 cnpg.existingOwnerSecret
+(또는 externalSecret)으로 지정하세요 - 이 차트가 자동으로 바꿔주지 않습니다.
+*/}}
+{{- if and .Values.cnpg.enabled .Values.cnpg.pooler.enabled -}}
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: {{ include "logto.cnpgClusterName" . }}-pooler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logto.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cnpg-pooler
+spec:
+  cluster:
+    name: {{ include "logto.cnpgClusterName" . }}
+  instances: {{ .Values.cnpg.pooler.instances }}
+  type: {{ .Values.cnpg.pooler.type }}
+  pgbouncer:
+    poolMode: {{ .Values.cnpg.pooler.pgbouncer.poolMode }}
+    {{- with .Values.cnpg.pooler.pgbouncer.parameters }}
+    parameters:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+{{- end -}}

@@ -1,0 +1,19 @@
+# 예시: 이 차트가 Secret을 직접 만들지 않고, Vault + External Secrets Operator로 관리.
+# cert-manager-install-guide.md 에서 Cloudflare 토큰을 kubectl 직접 생성 -> Vault/ESO로
+# 전환한 것과 동일한 방향입니다. cnpg/postgresql 어느 모드와도 함께 쓸 수 있습니다 -
+# externalSecret.enabled=true 이면 DB_URL/SECRET_VAULT_KEK 는 항상 여기서 채워집니다.
+
+externalSecret:
+  enabled: true
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  refreshInterval: 1h
+  dbUrl:
+    remoteRef:
+      key: secret/data/logto/db
+      property: uri
+  secretVaultKek:
+    remoteRef:
+      key: secret/data/logto/app
+      property: secretVaultKek

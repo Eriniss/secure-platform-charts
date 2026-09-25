@@ -1,0 +1,41 @@
+# 참고용 예시 - 이 차트가 만들지 않는 Gateway API 노출을 별도로 적용할 때 사용하세요.
+# argocd-provisioning-guide.md 에서 쓴 것과 동일한 패턴(기존 Gateway `gateway/default-gateway`에
+# HTTPRoute만 추가)입니다. <release-namespace>, <release-name>, 도메인은 실제 값으로 바꾸세요.
+#
+# 주의: backendRefs.port는 Logto Service가 노출하는 포트(core=3001, admin=3002 기본값)를
+# 가리켜야 합니다 - 파드의 targetPort가 아닙니다. (argocd 배포 때 이 부분 실수로 "no healthy
+# upstream" 에러를 겪은 전례가 있으니 특히 주의)
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: logto-core
+  namespace: logto
+spec:
+  parentRefs:
+    - name: default-gateway
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - "logto.polipixel.link"
+  rules:
+    - backendRefs:
+        - name: logto
+          port: 3001
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: logto-admin
+  namespace: logto
+spec:
+  parentRefs:
+    - name: default-gateway
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - "logto-admin.polipixel.link"
+  rules:
+    - backendRefs:
+        - name: logto
+          port: 3002

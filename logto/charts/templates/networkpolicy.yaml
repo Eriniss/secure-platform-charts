@@ -1,0 +1,51 @@
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "logto.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logto.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "logto.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- range .Values.networkPolicy.allowIngressFromNamespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+        {{- end }}
+      ports:
+        - port: core
+          protocol: TCP
+        - port: admin
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.dnsNamespace }}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # 같은 네임스페이스 내 DB(단독 Postgres 또는 전용 CNPG Cluster)로의 egress만 허용합니다.
+    # 다른 네임스페이스의 공용 CNPG 클러스터를 쓰는 경우(cnpg.cluster.create=false) 이 규칙을
+    # 그 네임스페이스를 가리키도록 직접 수정하세요.
+    - to:
+        - podSelector: {}
+      ports:
+        - port: {{ .Values.networkPolicy.databasePort }}
+          protocol: TCP
+    {{- if .Values.networkPolicy.allowExternalHTTPSEgress }}
+    - ports:
+        - port: 443
+          protocol: TCP
+    {{- end }}
+{{- end -}}

@@ -1,0 +1,35 @@
+# 예시: Logto 전용(독립형) CNPG 클러스터로 배포 - 프로덕션 기본 권장 경로.
+# helm install logto ./logto-chart -f examples/values-cnpg-dedicated.yaml -f my-overrides.yaml
+#
+# storage.storageClass는 이 프로젝트의 RKE2 클러스터(OpenEBS LVM LocalPV) 전용 값입니다.
+# 로컬 Docker Desktop 등 다른 환경에서 그대로 쓰면 해당 StorageClass가 없어
+# PVC가 `ProvisioningFailed`로 멈추고 initdb Job이 영원히 Pending 상태가 됩니다
+# (logto-helm-chart-guide.md 디버깅 로그 참고). 실제 배포 전에 반드시 대상 클러스터에
+# 맞는 StorageClass로 바꾸거나(`kubectl get storageclass`로 확인), 로컬 테스트용으로는
+# 아래처럼 비워서 클러스터 기본 StorageClass를 쓰거나 `hostpath` 등으로 바꾸세요.
+# 주의: StorageClass는 PVC 생성 후 변경 불가능한 필드라, Cluster 쪽 값을 나중에 고쳐도
+# 이미 만들어진 PVC는 그대로 남아 멈춥니다 - 잘못된 값으로 한 번 설치했다면 Cluster를
+# 고친 뒤 멈춘 PVC(예: <release>-1)를 직접 삭제해 CNPG가 새로 만들게 해야 합니다.
+
+logto:
+  endpoint: "https://logto.polipixel.link"
+  adminEndpoint: "https://logto-admin.polipixel.link"
+
+postgresql:
+  enabled: false
+
+cnpg:
+  enabled: true
+  cluster:
+    create: true
+    instances: 3
+    storage:
+      # RKE2 프로덕션 환경: openebs-lvm-thin. 로컬/다른 클러스터에서는 실제 존재하는
+      # StorageClass 이름으로 교체하거나 ""로 비워 기본 StorageClass를 쓰세요.
+      storageClass: openebs-lvm-thin
+      size: 10Gi
+    # 씬풀 자동확장 미조치 상태에서 볼륨을 늘리면 storage-issues-log.md 에 기록된 것과
+    # 동일한 유형의 장애가 재현될 수 있습니다 - 워커 3대 씬풀 자동확장 설정을 먼저 확인하세요.
+  database:
+    name: logto
+    owner: logto

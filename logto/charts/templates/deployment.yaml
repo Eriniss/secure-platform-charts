@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "logto.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logto.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "logto.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "logto.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "logto.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.dbInit.enabled }}
+      initContainers:
+        - name: db-init
+          image: {{ include "logto.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          # Logto CLI로 스키마 시드 + 보류 중인 alteration(마이그레이션) 적용.
+          # 이미 시드/마이그레이션된 DB에 대해서도 안전하게 재실행됩니다(idempotent).
+          # 여러 레플리카가 동시에 최초 기동될 경우를 피하려면 최초 설치는 replicaCount=1로 하세요.
+          command:
+            - sh
+            - -c
+            - |-
+              set -e
+              npm run cli db seed -- --swe {{ join " " .Values.dbInit.extraArgs }}
+              npm run alteration deploy latest
+          env:
+            - name: CI
+              value: "true"
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "logto.dbSecretName" . }}
+                  key: {{ include "logto.dbSecretKey" . }}
+          {{- with .Values.dbInit.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- end }}
+      containers:
+        - name: logto
+          image: {{ include "logto.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: core
+              containerPort: {{ .Values.ports.core }}
+              protocol: TCP
+            - name: admin
+              containerPort: {{ .Values.ports.admin }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "logto.fullname" . }}
+            {{- with .Values.logto.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "logto.dbSecretName" . }}
+                  key: {{ include "logto.dbSecretKey" . }}
+            - name: SECRET_VAULT_KEK
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "logto.appSecretName" . }}
+                  key: SECRET_VAULT_KEK
+            {{- with .Values.logto.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          # Logto core/admin은 별도 헬스체크 엔드포인트를 문서화하고 있지 않아
+          # TCP 소켓 프로브를 기본값으로 사용합니다. 필요하면 httpGet으로 교체하세요.
+          startupProbe:
+            tcpSocket:
+              port: core
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: core
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: core
+            periodSeconds: 20
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

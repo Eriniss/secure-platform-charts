@@ -1,0 +1,286 @@
+# =============================================================================
+# Logto Helm Chart - values.yaml
+# =============================================================================
+# 설계 방향
+#   1) Ingress / Gateway API(HTTPRoute)는 이 차트가 만들지 않습니다.
+#      여타 Helm 차트들과 마찬가지로, 서비스 노출은 앱 배포와 분리해서
+#      직접(또는 별도 GitOps 매니페스트로) 관리하는 것을 권장합니다.
+#      examples/ 디렉터리에 참고용 HTTPRoute/Ingress 예시를 포함했습니다.
+#   2) 데이터베이스는 기본적으로 차트 내장 단독 PostgreSQL(StatefulSet, 단일 레플리카)을
+#      사용합니다 - 여타 Helm 차트의 "bundled DB" 기본값과 동일한 관례입니다.
+#      다만 이는 어디까지나 빠른 시작/테스트용이며, 프로덕션에서는
+#      cnpg.enabled=true 로 전환해 CloudNativePG가 관리하는 Postgres를
+#      사용하는 것을 강력히 권장합니다. cnpg.enabled=true 이면
+#      postgresql.enabled 값과 무관하게 CNPG가 우선합니다.
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  # 참고: Kyverno 등으로 "허용된 레지스트리 출처만" 이미지를 admit 하는 정책을 쓰는 경우
+  # (Harbor 단일 소스 강제 등) registry/repository 를 내부 레지스트리 미러 경로로 바꾸세요.
+  registry: ghcr.io
+  repository: logto-io/logto
+  # 비워두면 Chart.yaml의 appVersion을 사용합니다.
+  # 프로덕션에서는 반드시 특정 버전 태그를 고정하세요(latest 금지).
+  # 최신 태그: https://github.com/logto-io/logto/releases
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+replicaCount: 1
+# 주의(수평 확장): Logto Admin Console에서 "공식 커넥터(Official Connector)"를 설치하면
+# 커넥터 코드가 파드 로컬 파일시스템에 저장됩니다. 여러 레플리카가 이를 공유하려면
+# ReadWriteMany 볼륨이 필요한데, OpenEBS LVM LocalPV 등 RWO 전용 스토리지 환경에서는
+# 지원되지 않습니다. replicaCount > 1 로 운영하려면 (a) 커넥터를 쓰지 않거나
+# (b) 커넥터 파일을 각 레플리카에 동일하게 미리 구워 넣는 방식(커스텀 이미지 빌드)을
+# 검토하세요. 자세한 내용: https://docs.logto.io/docs/recipes/deployment/
+# 최초 설치 시 replicaCount를 1보다 크게 두면 첫 DB 마이그레이션이 여러 파드에서
+# 동시에 실행될 수 있으니, 최초에는 1로 설치해 정상 기동을 확인한 뒤 늘리는 것을 권장합니다.
+
+logto:
+  # 외부에서 접근하는 실제 URL (필수, 프로덕션에서는 https). 이 값이 OIDC issuer,
+  # 쿠키 도메인, CORS, 콜백 URL 계산 등에 쓰입니다.
+  endpoint: "https://logto.example.com"
+  adminEndpoint: "https://logto-admin.example.com"
+  # Gateway API / Ingress 등 L7 프록시가 앞단에서 TLS를 종료하는 구성이면 1(true)로 둡니다.
+  trustProxyHeader: true
+
+  # Secret Vault 암호화 키(32바이트, base64). SSO 커넥터 시크릿 등 Logto가 DB에
+  # 저장하는 민감정보를 암호화하는 데 쓰입니다. 비워두면 최초 설치 시 차트가 자동
+  # 생성해 Secret에 저장합니다 - 이후 helm uninstall/재설치 시에도 값이 보존되도록
+  # 반드시 Secret을 백업하거나(권장) Vault/ESO(externalSecret.enabled)로 관리하세요.
+  # 이 키를 잃어버리면 저장된 커넥터 시크릿 등을 복호화할 수 없습니다.
+  secretVaultKEK: ""
+
+  # 그 외 Logto가 지원하는 환경변수(SSRF_ALLOWED_ADDRESSES, DATABASE_STATEMENT_TIMEOUT,
+  # ADMIN_DISABLE_LOCALHOST 등)는 여기로 직접 추가하세요.
+  # https://docs.logto.io/docs/recipes/deployment/
+  extraEnv: []
+  # - name: SSRF_ALLOWED_ADDRESSES
+  #   value: "10.0.0.0/8"
+  extraEnvFrom: []
+  # - configMapRef:
+  #     name: my-extra-config
+
+ports:
+  core: 3001
+  admin: 3002
+
+service:
+  type: ClusterIP
+  annotations: {}
+  # HTTPRoute/Ingress의 backendRefs.port는 아래 core/admin 값(Service가 노출하는 포트)을
+  # 가리켜야 합니다 - 파드의 targetPort가 아닙니다.
+  core:
+    port: 3001
+  admin:
+    port: 3002
+
+resources: {}
+# resources:
+#   requests:
+#     cpu: 200m
+#     memory: 512Mi
+#   limits:
+#     memory: 1Gi
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 75
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# 클러스터 내부 접근 통제 (Cilium/표준 NetworkPolicy 둘 다 호환).
+# 기본은 비활성화 - 프로젝트에서 제로트러스트 네트워킹을 적용할 단계가 되면 활성화하세요.
+networkPolicy:
+  enabled: false
+  # core/admin 포트로의 ingress를 허용할 네임스페이스 이름 목록
+  # (예: Gateway API 리소스가 있는 namespace). kubernetes.io/metadata.name 라벨로 매칭합니다.
+  allowIngressFromNamespaces:
+    - gateway
+  # DNS(kube-dns/CoreDNS) egress를 허용할 네임스페이스
+  dnsNamespace: kube-system
+  # DB로의 egress 허용 포트 (CNPG/단독 Postgres 공통 기본 5432)
+  databasePort: 5432
+  # SSO 커넥터/웹훅 등 외부 HTTPS 아웃바운드를 허용할지 여부
+  allowExternalHTTPSEgress: true
+
+# =============================================================================
+# 데이터베이스
+# =============================================================================
+
+# --- 모드 1: 차트 내장 단독 PostgreSQL (기본값) -----------------------------
+# 단일 레플리카, 복제/자동 백업 없음. 빠른 시작/테스트/데모 용도이며
+# 프로덕션에는 권장하지 않습니다. cnpg.enabled=true 이면 이 섹션은 무시됩니다.
+postgresql:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    username: logto
+    # 비워두면 최초 설치 시 자동 생성되어 Secret에 저장됩니다.
+    password: ""
+    database: logto
+    # 직접 만든 Secret을 쓰려면 이름을 지정하세요. 필요한 키: username, password, database
+    existingSecret: ""
+  persistence:
+    enabled: true
+    # 비워두면 클러스터 기본 StorageClass 사용 (예: openebs-lvm-thin).
+    # OpenEBS LVM LocalPV는 ReadWriteOnce만 지원 - accessModes를 바꾸지 마세요.
+    storageClass: ""
+    size: 8Gi
+    accessModes: ["ReadWriteOnce"]
+  resources: {}
+  extraEnv: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# --- 모드 2: CloudNativePG (권장, 프로덕션) ----------------------------------
+cnpg:
+  enabled: false
+
+  cluster:
+    # true  : 이 차트가 Logto 전용 CNPG Cluster를 새로 생성합니다(독립형 클러스터).
+    # false : 이미 존재하는(예: GitLab/Harbor와 공유하는 "공용 Postgres") CNPG 클러스터를
+    #         그대로 사용하고, 이 차트는 Database CR(논리 데이터베이스)만 생성합니다.
+    #         이 경우 owner role/패스워드 Secret은 공용 클러스터 관리 쪽에서
+    #         managed.roles로 미리 만들어 두고, existingOwnerSecret에 지정하세요.
+    create: true
+    # 비우면 "<release-name>-logto" 로 생성/참조합니다.
+    name: ""
+    instances: 3
+    # Logto의 DB 시드 과정(logto db seed)이 내부적으로 Postgres role을 직접 생성합니다.
+    # 차트 내장 단독 Postgres 모드에서는 POSTGRES_USER가 자동으로 superuser라 문제가 없지만,
+    # CNPG가 bootstrap.initdb.owner로 만드는 owner role은 기본적으로 superuser가 아니라서
+    # CREATEROLE 권한이 없으면 seed 단계에서 "Only roles with the CREATEROLE attribute may
+    # create roles"(42501) 에러로 실패합니다. 그래서 기본값 true - CNPG 공식 예시
+    # (cluster-example-with-roles.yaml)와 동일하게 managed.roles로 owner role 자체에
+    # createrole을 부여합니다. cluster.create=false(공용 클러스터) 모드에서는 이 값이 적용되지
+    # 않으니, 공용 클러스터 쪽 managed.roles 선언에 createrole: true를 직접 추가해야 합니다
+    # (examples/values-cnpg-shared.yaml 참고).
+    ownerCreateRole: true
+    # 비우면 CNPG가 기본으로 사용하는 PostgreSQL 이미지를 사용합니다.
+    # Harbor 단일 소스 강제 정책이 있다면 미러링한 이미지 경로를 지정하세요.
+    imageName: ""
+    storage:
+      storageClass: ""
+      size: 10Gi
+    resources: {}
+    # monitoring.enablePodMonitor 등 PodMonitor CRD(kube-prometheus-stack)가 이미
+    # 설치되어 있을 때만 true로 켜세요.
+    monitoring:
+      enablePodMonitor: false
+    # 참고(storage-dr-guide.md): DB 오퍼레이터 네이티브 PITR 백업은 아직 "추후 구성"
+    # 단계입니다. 준비되면 barmanObjectStore로 외부 MinIO를 backup 대상으로 지정하세요.
+    backup:
+      enabled: false
+      barmanObjectStore: {}
+      # destinationPath: "s3://cnpg-backups/logto"
+      # endpointURL: "https://<MinIO_IP>:9000"
+      # s3Credentials:
+      #   accessKeyId:
+      #     name: minio-creds
+      #     key: ACCESS_KEY_ID
+      #   secretAccessKey:
+      #     name: minio-creds
+      #     key: ACCESS_SECRET_KEY
+    # 위 필드로 표현 안 되는 고급 설정은 여기에 raw 오버레이로 추가하세요.
+    # (Cluster.spec에 mergeOverwrite로 병합됩니다)
+    extraSpec: {}
+
+  database:
+    name: logto
+    owner: logto
+
+  # cluster.create=false 일 때, 공용 클러스터에 이미 만들어진 owner role의 인증정보 Secret.
+  # 공용 클러스터가 이 릴리스와 다른 네임스페이스에 있다면 지정하세요 (기본: 동일 네임스페이스).
+  clusterNamespace: ""
+  existingOwnerSecret: ""
+  # "basic-auth" (기본값, 권장): existingOwnerSecret에 username/password 키만 있으면 됩니다.
+  #   CNPG의 managed.roles.passwordSecret이 정확히 이 형식(kubernetes.io/basic-auth)이므로,
+  #   공용 클러스터 쪽에서 managed.roles로 만든 Secret을 그대로 쓸 수 있습니다. 이 경우 이 차트가
+  #   host(=<cluster.name>-rw 서비스)/port/dbname을 조합해 연결 URI를 자동으로 만듭니다.
+  # "uri": existingOwnerSecret에 이미 완성된 연결 URI가 담긴 키(existingOwnerSecretKey)가 있습니다.
+  existingOwnerSecretFormat: "basic-auth"
+  existingOwnerSecretUserKey: "username"
+  existingOwnerSecretPasswordKey: "password"
+  existingOwnerSecretKey: "uri"
+
+  # PgBouncer Pooler (선택) - 커넥션이 많아지면(특히 공용 클러스터 공유 시) 권장.
+  pooler:
+    enabled: false
+    type: rw
+    instances: 1
+    pgbouncer:
+      poolMode: transaction
+      parameters: {}
+
+# --- 모드 3: 완전 외부 관리형 Postgres (RDS 등, CNPG도 내장 Postgres도 아닌 경우) ---
+# cnpg.enabled=false 이고 postgresql.enabled=false 일 때만 쓰입니다.
+externalDatabase:
+  existingSecret: ""
+  # 연결 URI 하나가 담긴 키 이름 (postgres://user:pass@host:5432/dbname 형식)
+  existingSecretKey: "uri"
+
+# =============================================================================
+# 시크릿을 Vault + External Secrets Operator로 관리하는 경우
+# (프로젝트에서 이미 Vault/ESO로 다른 컴포넌트의 시크릿을 관리 중이라면 권장)
+# 활성화하면 DB 연결 문자열/Secret Vault KEK를 이 차트가 직접 만들지 않고,
+# ExternalSecret이 SecretStore를 통해 Vault에서 가져와 채웁니다.
+# =============================================================================
+externalSecret:
+  enabled: false
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  refreshInterval: 1h
+  # Vault 경로에서 DB 연결 URI를 가져올 remoteRef (ExternalSecret data[].remoteRef 형식)
+  dbUrl:
+    remoteRef: {}
+    # key: secret/data/logto/db
+    # property: uri
+  secretVaultKek:
+    remoteRef: {}
+    # key: secret/data/logto/app
+    # property: secretVaultKek
+
+# DB 마이그레이션/시드 (initContainer로 실행 - 메인 컨테이너 시작 전 매번 수행되며,
+# Logto CLI 자체가 이미 시드된 상태를 감지해 건너뛰도록 설계되어 있어 재실행에 안전합니다)
+dbInit:
+  enabled: true
+  resources: {}
+  extraArgs: []

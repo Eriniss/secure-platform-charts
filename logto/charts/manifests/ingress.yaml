@@ -1,0 +1,38 @@
+# 참고용 예시 - Gateway API 대신 전통적인 Ingress를 쓰는 환경을 위한 대안입니다.
+# 이 프로젝트(RKE2 + Cilium Gateway API)에서는 기본적으로 httproute.yaml 쪽을 권장합니다.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: logto
+  namespace: <release-namespace>
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - logto.example.com
+        - logto-admin.example.com
+      secretName: logto-tls
+  rules:
+    - host: logto.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: <release-name>-logto
+                port:
+                  number: 3001
+    - host: logto-admin.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: <release-name>-logto
+                port:
+                  number: 3002

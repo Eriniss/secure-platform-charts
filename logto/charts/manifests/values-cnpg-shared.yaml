@@ -1,0 +1,56 @@
+# 예시: GitLab/Harbor 등과 공유하는 "공용 Postgres" CNPG 클러스터를 그대로 사용
+# (k8s-security-project-plan.md 5번 표: "CNPG(공용 Postgres) - GitLab/Harbor/Logto 등 공용").
+# 이 모드에서는 이 차트가 Cluster를 만들지 않고, Database CR(논리 DB)만 생성합니다.
+# 주의: CNPG Database CR은 참조하는 Cluster와 같은 네임스페이스에 있어야 하므로,
+# 이 release는 공용 클러스터와 동일한 네임스페이스에 설치해야 합니다.
+
+logto:
+  endpoint: "https://logto.polipixel.link"
+  adminEndpoint: "https://logto-admin.polipixel.link"
+
+postgresql:
+  enabled: false
+
+cnpg:
+  enabled: true
+  cluster:
+    create: false
+    name: postgres-shared          # 실제 공용 CNPG Cluster 리소스 이름으로 교체
+  database:
+    name: logto
+    owner: logto
+
+  # 공용 클러스터 쪽(postgres-shared 를 관리하는 매니페스트)에 아래처럼 owner role을
+  # 미리 선언해 두면, CNPG가 자동으로 username/password 키를 가진 basic-auth Secret을
+  # 채웁니다 - 그 Secret 이름을 아래 existingOwnerSecret에 그대로 지정하면 됩니다.
+  #
+  #   apiVersion: postgresql.cnpg.io/v1
+  #   kind: Cluster
+  #   metadata:
+  #     name: postgres-shared
+  #   spec:
+  #     managed:
+  #       roles:
+  #         - name: logto
+  #           ensure: present
+  #           login: true
+  #           createrole: true   # Logto의 db seed가 내부적으로 role을 생성해서 필요 (없으면
+  #                               # "Only roles with the CREATEROLE attribute may create
+  #                               # roles" 42501 에러로 seed가 실패함)
+  #           passwordSecret:
+  #             name: postgres-shared-logto-role   # username/password를 담을 Secret 이름
+  #   ---
+  #   apiVersion: v1
+  #   kind: Secret
+  #   metadata:
+  #     name: postgres-shared-logto-role
+  #     labels:
+  #       cnpg.io/reload: "true"
+  #   type: kubernetes.io/basic-auth
+  #   stringData:
+  #     username: logto
+  #     password: <Vault 등에서 생성한 비밀번호>
+  #
+  # existingOwnerSecretFormat 기본값(basic-auth)을 그대로 쓰면, 이 차트가
+  # host(=postgres-shared-rw)/port/dbname을 조합해 연결 URI를 자동으로 만듭니다.
+  existingOwnerSecret: postgres-shared-logto-role

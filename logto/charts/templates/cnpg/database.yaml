@@ -1,0 +1,24 @@
+{{/*
+기존(공용) CNPG 클러스터를 그대로 쓰는 경로 (cnpg.cluster.create=false).
+Cluster는 만들지 않고, 그 안에 Logto용 논리 Database만 선언적으로 생성합니다.
+owner role(및 그 role의 password Secret인 cnpg.existingOwnerSecret)은
+공용 클러스터를 관리하는 쪽에서 managed.roles로 미리 만들어 두어야 합니다.
+*/}}
+{{- if and .Values.cnpg.enabled (not .Values.cnpg.cluster.create) -}}
+{{- if and .Values.cnpg.clusterNamespace (ne .Values.cnpg.clusterNamespace .Release.Namespace) -}}
+{{- fail "CNPG Database CR은 참조하는 Cluster와 같은 네임스페이스에 있어야 합니다. cnpg.clusterNamespace를 이 릴리스의 네임스페이스와 동일하게 맞추거나, Database CR을 해당 네임스페이스에 직접 배포하세요." -}}
+{{- end -}}
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: {{ include "logto.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logto.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cnpg
+spec:
+  name: {{ .Values.cnpg.database.name }}
+  owner: {{ .Values.cnpg.database.owner }}
+  cluster:
+    name: {{ include "logto.cnpgClusterName" . }}
+{{- end -}}

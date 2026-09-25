@@ -1,0 +1,54 @@
+Logto가 배포되었습니다 (release: {{ .Release.Name }}, namespace: {{ .Release.Namespace }}).
+
+Service:
+  - core (로그인/API):  {{ include "logto.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.core.port }}
+  - admin (관리 콘솔):  {{ include "logto.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.admin.port }}
+
+{{- if .Values.cnpg.enabled }}
+데이터베이스: CloudNativePG
+{{- if .Values.cnpg.cluster.create }}
+  - 이 차트가 전용 CNPG Cluster "{{ include "logto.cnpgClusterName" . }}" 를 생성했습니다.
+  - 상태 확인: kubectl -n {{ .Release.Namespace }} get cluster {{ include "logto.cnpgClusterName" . }}
+{{- else }}
+  - 기존(공용) CNPG 클러스터 "{{ include "logto.cnpgClusterName" . }}" 를 그대로 사용합니다.
+  - Database CR 상태 확인: kubectl -n {{ .Release.Namespace }} get database {{ include "logto.fullname" . }}
+{{- end }}
+{{- else if .Values.postgresql.enabled }}
+데이터베이스: 차트 내장 단독 PostgreSQL (테스트/데모용, 단일 레플리카·복제 없음)
+  ⚠ 프로덕션에서는 cnpg.enabled=true 로 전환해 CloudNativePG를 사용하는 것을 강력히 권장합니다.
+    values.yaml의 cnpg 섹션과 examples/values-cnpg-*.yaml 을 참고하세요.
+{{- else }}
+데이터베이스: 외부 관리형 Postgres (externalDatabase.existingSecret 사용)
+{{- end }}
+
+다음 단계 (이 차트가 만들지 않는 것들):
+
+1) 외부 노출 (Ingress / Gateway API)
+   이 차트는 Ingress/HTTPRoute를 만들지 않습니다. Service({{ include "logto.fullname" . }})의
+   core/admin 포트를 참조하는 HTTPRoute(또는 Ingress)를 별도로 작성해 GitOps 저장소 등에서
+   앱 매니페스트와 분리 관리하세요. examples/httproute.yaml, examples/ingress.yaml 참고.
+   ※ HTTPRoute의 backendRefs.port는 Service가 노출하는 포트({{ .Values.service.core.port }}/{{ .Values.service.admin.port }})를
+     가리켜야 합니다 - 컨테이너의 targetPort가 아닙니다.
+
+2) 최초 로그인
+   endpoint: {{ .Values.logto.endpoint }}
+   admin endpoint: {{ .Values.logto.adminEndpoint }}
+   (위 URL로 실제 트래픽이 도달하려면 1번의 HTTPRoute/Ingress 구성이 먼저 필요합니다)
+   최초 접속 시 관리자 계정 생성 화면이 나타납니다.
+
+3) SECRET_VAULT_KEK 백업
+   {{- if .Values.externalSecret.enabled }}
+   externalSecret.enabled=true 이므로 이 값은 Vault가 단일 진실 공급원입니다. Vault 쪽 백업을 확인하세요.
+   {{- else }}
+   이 값은 SSO 커넥터 시크릿 등 DB에 저장된 민감정보를 암호화하는 키입니다. 분실 시 복호화가
+   불가능하니 Secret "{{ include "logto.appSecretName" . }}" 를 반드시 백업해두세요.
+   kubectl -n {{ .Release.Namespace }} get secret {{ include "logto.appSecretName" . }} -o jsonpath='{.data.SECRET_VAULT_KEK}' | base64 -d
+   {{- end }}
+
+4) 이미지 출처 정책(Kyverno 등)을 쓰는 경우
+   Logto 이미지({{ .Values.image.registry }}/{{ .Values.image.repository }}) 및
+   {{- if .Values.postgresql.enabled }} 단독 Postgres 이미지({{ .Values.postgresql.image.registry }}/{{ .Values.postgresql.image.repository }}){{- end }}
+   {{- if .Values.cnpg.enabled }} CNPG가 사용하는 Postgres 이미지{{- end }}
+   가 "허용된 레지스트리 출처만" 통과시키는 admission 정책(예: 이 클러스터의 Harbor 단일 소스 강제)의
+   대상이라면, 내부 레지스트리로 미리 미러링한 뒤 image.registry/repository 값(및 cnpg.cluster.imageName)을
+   해당 경로로 바꿔서 배포하세요.
