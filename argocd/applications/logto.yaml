@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: logto
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:Eriniss/secure-platform-charts.git
+    targetRevision: main
+    path: logto/charts
+    helm:
+      valueFiles:
+        - manifests/values-cnpg-dedicated.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logto
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
