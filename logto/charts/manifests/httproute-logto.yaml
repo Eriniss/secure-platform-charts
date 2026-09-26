@@ -20,7 +20,7 @@ spec:
     - "logto.polipixel.link"
   rules:
     - backendRefs:
-        - name: logto
+        - name: logto-app
           port: 3001
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -37,5 +37,5 @@ spec:
     - "logto-admin.polipixel.link"
   rules:
     - backendRefs:
-        - name: logto
+        - name: logto-app
           port: 3002
