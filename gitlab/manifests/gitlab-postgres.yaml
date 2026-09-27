@@ -1,0 +1,19 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: gitlab-postgres
+  namespace: gitlab
+spec:
+  instances: 1
+  storage:
+    storageClass: openebs-lvm-thin
+    size: 20Gi
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+  bootstrap:
+    initdb:
+      database: gitlabhq_production
+      owner: gitlab
+  postgresql:
+    parameters:
+      max_connections: "200"

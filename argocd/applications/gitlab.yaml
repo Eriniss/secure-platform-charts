@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://charts.gitlab.io
       chart: gitlab
-      targetRevision: 10.2.1   # helm search repo gitlab/gitlab --versions로 최신 확인
+      targetRevision: 10.2.1
       helm:
         valueFiles:
           - $values/gitlab/values/gitlab.yaml
