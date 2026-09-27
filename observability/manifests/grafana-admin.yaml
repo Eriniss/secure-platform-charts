@@ -1,0 +1,18 @@
+apiVersion: external-secrets.io/v1          # v1beta1 아님 — Harbor 때 겪은 함정
+kind: ExternalSecret
+metadata:
+  name: grafana-admin
+  namespace: observability
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: grafana-admin
+    creationPolicy: Owner
+  data:
+    - secretKey: admin-user
+      remoteRef: {key: secret/data/observability/grafana-admin, property: username}
+    - secretKey: admin-password
+      remoteRef: {key: secret/data/observability/grafana-admin, property: password}

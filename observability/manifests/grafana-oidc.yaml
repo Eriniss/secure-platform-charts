@@ -1,0 +1,16 @@
+apiVersion: external-secrets.io/v1          # v1beta1 아님 — Harbor 때 겪은 함정
+kind: ExternalSecret
+metadata:
+  name: grafana-oidc
+  namespace: observability
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: grafana-oidc
+    creationPolicy: Owner
+  data:
+    - secretKey: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+      remoteRef: {key: secret/data/observability/grafana-oidc, property: clientsecret}
