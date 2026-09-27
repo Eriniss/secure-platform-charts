@@ -1,0 +1,81 @@
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+envFromSecrets:
+  - name: grafana-oidc                # GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+envValueFrom:
+  GF_DATABASE_PASSWORD:
+    secretKeyRef: {name: grafana-db-app, key: password}
+
+persistence:
+  enabled: false                      # 상태는 전부 Postgres에
+
+grafana.ini:
+  server:
+    root_url: https://grafana.polipixel.link
+  database:
+    type: postgres
+    host: grafana-db-rw.observability.svc:5432
+    name: grafana
+    user: grafana
+    ssl_mode: disable
+  auth:
+    oauth_allow_insecure_email_lookup: false
+  auth.generic_oauth:
+    enabled: true
+    name: Logto
+    client_id: <Logto Client ID>      # 비밀값 아님 — Git에 커밋 가능 (ArgoCD 때와 동일한 판단)
+    scopes: openid profile email roles
+    auth_url:  https://logto.polipixel.link/oidc/auth
+    token_url: https://logto.polipixel.link/oidc/token
+    api_url:   https://logto.polipixel.link/oidc/me
+    use_pkce: true
+    email_attribute_path: email
+    login_attribute_path: username
+    role_attribute_path: "contains(roles[*], 'grafana-admin') && 'GrafanaAdmin' || 'Viewer'"
+    allow_assign_grafana_admin: true
+    allow_sign_up: true
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Mimir
+        uid: mimir
+        type: prometheus
+        url: http://mimir-gateway.observability.svc/prometheus
+        isDefault: true
+        jsonData:
+          prometheusType: Mimir
+          exemplarTraceIdDestinations:
+            - name: trace_id
+              datasourceUid: tempo
+      - name: Loki
+        uid: loki
+        type: loki
+        url: http://loki-gateway.observability.svc
+        jsonData:
+          derivedFields:              # OTLP 로그의 trace_id(structured metadata) → Tempo
+            - name: TraceID
+              matcherType: label
+              matcherRegex: trace_id
+              datasourceUid: tempo
+              url: "$${__value.raw}"
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        url: http://tempo.observability.svc:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            filterByTraceID: true
+            spanStartTimeShift: "-5m"
+            spanEndTimeShift: "5m"
+          tracesToMetrics:
+            datasourceUid: mimir
+          serviceMap:
+            datasourceUid: mimir      # Tempo metrics-generator가 쓴 service graph
+          nodeGraph:
+            enabled: true

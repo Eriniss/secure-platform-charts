@@ -1,0 +1,34 @@
+tempo:
+  retention: 72h
+  extraArgs:
+    config.expand-env: true
+  extraEnvFrom:
+    - secretRef: {name: lgtm-minio}
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: tempo-traces
+        endpoint: minio.polipixel.link:9000
+        region: us-east-1
+        access_key: ${LGTM_S3_ACCESS_KEY}
+        secret_key: ${LGTM_S3_SECRET_KEY}
+        forcepathstyle: true
+        insecure: false
+        insecure_skip_verify: true
+  receivers:                          # Jaeger 수신기는 불필요하므로 OTLP만 남김
+    otlp:
+      protocols:
+        grpc: {endpoint: "0.0.0.0:4317"}
+        http: {endpoint: "0.0.0.0:4318"}
+  metricsGenerator:                   # span metrics / service graph → Mimir
+    enabled: true
+    remoteWriteUrl: http://mimir-gateway.observability.svc/api/v1/push
+  overrides:
+    defaults:
+      metrics_generator:
+        processors: [service-graphs, span-metrics]
+
+persistence:                          # live-store WAL (/var/tempo)
+  enabled: true
+  size: 10Gi

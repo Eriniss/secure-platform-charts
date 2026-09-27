@@ -1,0 +1,65 @@
+global:
+  extraEnvFrom:
+    - secretRef:
+        name: lgtm-minio
+
+# ---- 번들·부가 컴포넌트 끄기 ----
+minio:             {enabled: false}
+kafka:             {enabled: false}
+rollout_operator:  {enabled: false}   # zone-aware를 끄므로 불필요
+alertmanager:      {enabled: false}   # Grafana-managed alerting 사용
+ruler:             {enabled: false}
+overrides_exporter: {enabled: false}
+
+# ---- 홈랩 규모로 축소 (zone-aware 기본값 해제) ----
+ingester:
+  replicas: 1
+  zoneAwareReplication: {enabled: false}
+  persistentVolume: {size: 10Gi}
+store_gateway:
+  replicas: 1
+  zoneAwareReplication: {enabled: false}
+  persistentVolume: {size: 5Gi}
+compactor:
+  replicas: 1
+  persistentVolume: {size: 5Gi}
+distributor:     {replicas: 1}
+querier:         {replicas: 1}
+query_frontend:  {replicas: 1}
+query_scheduler: {replicas: 1}
+gateway:
+  enabledNonEnterprise: true          # 서비스 mimir-gateway:80 — 모든 경로의 단일 진입점
+  replicas: 1
+
+mimir:
+  structuredConfig:
+    multitenancy_enabled: false
+    ingest_storage:
+      enabled: false                  # classic 아키텍처
+    ingester:
+      push_grpc_method_enabled: true  # classic 아키텍처에서 필요 (마이그레이션 가이드)
+      ring:
+        replication_factor: 1
+    store_gateway:
+      sharding_ring:
+        replication_factor: 1
+    common:
+      storage:
+        backend: s3
+        s3:
+          endpoint: minio.polipixel.link:9000
+          region: us-east-1
+          access_key_id: ${LGTM_S3_ACCESS_KEY}
+          secret_access_key: ${LGTM_S3_SECRET_KEY}
+          insecure: false             # MinIO는 HTTPS(자체서명)
+          http:
+            insecure_skip_verify: true
+    blocks_storage:
+      s3:
+        bucket_name: mimir-blocks
+    limits:
+      compactor_blocks_retention_period: 15d
+      max_global_series_per_user: 1000000
+      out_of_order_time_window: 10m   # OTLP 배치 지연으로 순서가 뒤바뀐 샘플 허용
+      # OTLP 리소스 속성은 기본적으로 target_info에만 들어감 → 자주 쓰는 것만 라벨로 승격
+      promote_otel_resource_attributes: "service.namespace,service.instance.id,deployment.environment.name,k8s.namespace.name,k8s.pod.name,k8s.deployment.name,k8s.node.name"
