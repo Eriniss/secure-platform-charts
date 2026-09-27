@@ -1,3 +1,4 @@
+# gitlab/values/values-gitlab.yaml
 global:
   hosts: { domain: polipixel.link, https: true }
   ingress: { enabled: false }
@@ -39,8 +40,13 @@ postgresql: { install: false }
 redis: { install: false }
 minio: { install: false }
 nginx-ingress: { enabled: false }
+installCertmanager: false
+certmanager: { installCRDs: false }
+certmanager-issuer:
+  install: false
+  email: jhs2195@gmail.com   # install:false여도 스키마가 email 존재를 강제 (겪음, 아래 참고)
 prometheus: { install: false }
-gitlab-runner: { install: false }   # Runner는 별도 릴리스 (6절)
+gitlab-runner: { install: false }   # Runner는 별도 Application (10절)
 ai-gateway: { install: false }
 
 gitlab:
@@ -50,4 +56,4 @@ gitlab:
     persistence: { storageClass: openebs-lvm-thin, size: 30Gi }   # RWO — LVM LocalPV와 호환
   toolbox:
     backups:
-      objectStorage: { config: { secret: gitlab-backup-storage, key: config } }
+      objectStorage: { config: { secret: gitlab-backup-storage, key: config } }{ config: { secret: gitlab-backup-storage, key: config } }
