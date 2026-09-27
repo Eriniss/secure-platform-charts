@@ -101,4 +101,4 @@ gitlab:
       objectStorage:
         config:
           secret: gitlab-backup-storage
-          key: config{ config: { secret: gitlab-backup-storage, key: config } }
+          key: config
