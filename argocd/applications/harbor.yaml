@@ -1,0 +1,58 @@
+# harbor-application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: harbor-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://helm.goharbor.io
+    chart: harbor
+    targetRevision: 1.19.2
+    helm:
+      values: |
+        expose:
+          type: clusterIP
+          tls:
+            enabled: false
+          clusterIP:
+            name: harbor
+        externalURL: https://harbor.polipixel.link
+        existingSecretAdminPassword: harbor-admin-password
+        existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+        persistence:
+          imageChartStorage:
+            type: s3
+            s3:
+              region: us-east-1
+              bucket: harbor-registry
+              regionendpoint: http://minio.polipixel.link:9000
+              secure: true
+              skipverify: true
+              v4auth: true
+              existingSecret: harbor-minio-s3
+        database:
+          type: external
+          external:
+            host: "harbor-db-rw.harbor.svc.cluster.local"
+            port: "5432"
+            username: "harbor"
+            coreDatabase: "registry"
+            existingSecret: "harbor-db-app"
+            sslmode: "disable"
+        redis:
+          type: internal
+        trivy:
+          enabled: true
+        jobservice:
+          jobLogger: database
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: harbor
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,42 @@
+expose:
+  type: clusterIP
+  tls:
+    enabled: false        # Gateway가 TLS 종료, 내부는 평문 — ArgoCD와 동일 패턴
+  clusterIP:
+    name: harbor
+
+externalURL: https://harbor.polipixel.link
+
+existingSecretAdminPassword: harbor-admin-password
+existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+
+persistence:
+  imageChartStorage:
+    type: s3
+    s3:
+      region: us-east-1                    # MinIO는 값 자체는 안 씀, 비워둘 수 없어 형식상 채움
+      bucket: harbor-registry
+      regionendpoint: http://minio.polipixel.link:9000
+      secure: true
+      skipverify: true                     # MinIO가 자체서명 인증서일 때. CA가 신뢰되면 false
+      v4auth: true
+      existingSecret: harbor-minio-s3
+
+database:
+  type: external
+  external:
+    host: "harbor-db-rw.harbor.svc.cluster.local"
+    port: "5432"
+    username: "harbor"
+    coreDatabase: "registry"
+    existingSecret: "harbor-db-app"
+    sslmode: "disable"        # 클러스터 내부 트래픽, Vault/ArgoCD와 동일하게 평문 허용
+
+redis:
+  type: internal
+
+trivy:
+  enabled: true                # 목표 #2(취약 이미지 자동 탐지) 검증에 필요
+
+jobservice:
+  jobLogger: database          # PVC 없이 job 로그를 DB에 저장

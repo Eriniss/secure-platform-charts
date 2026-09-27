@@ -1,0 +1,14 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: harbor-db
+  namespace: harbor
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+    storageClass: openebs-lvm-thin
+  bootstrap:
+    initdb:
+      database: registry
+      owner: harbor
