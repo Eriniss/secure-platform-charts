@@ -1,4 +1,3 @@
-# harbor-application.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -12,6 +11,8 @@ spec:
     targetRevision: 1.19.2
     helm:
       values: |
+        updateStrategy:
+          type: Recreate
         expose:
           type: clusterIP
           tls:
