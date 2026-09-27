@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitlab-runner
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.gitlab.io
+      chart: gitlab-runner
+      targetRevision: 0.75.0   # helm search repo gitlab/gitlab-runner --versions 로 최신 확인 후 고정
+      helm:
+        valueFiles:
+          - $values/gitlab/values/runner.yaml
+    - repoURL: git@github.com:Eriniss/secure-platform-charts.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitlab
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,12 @@
+gitlabUrl: "https://gitlab.polipixel.link/"
+
+runners:
+  secret: gitlab-runner-secret
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        namespace = "gitlab"
+        image = "alpine:latest"
+
+rbac:
+  create: true
