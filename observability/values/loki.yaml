@@ -1,12 +1,16 @@
 deploymentMode: Monolithic
 
+global:
+  dnsService: rke2-coredns-rke2-coredns
+  dnsNamespace: kube-system
+
 loki:
   auth_enabled: false
   commonConfig:
     replication_factor: 1
   schemaConfig:
     configs:
-      - from: "2026-09-28"            # 설치일 이후 날짜로
+      - from: "2026-09-01"
         store: tsdb
         object_store: s3
         schema: v13                   # OTLP·structured metadata의 전제 조건
@@ -22,7 +26,7 @@ loki:
       accessKeyId: ${LGTM_S3_ACCESS_KEY}
       secretAccessKey: ${LGTM_S3_SECRET_KEY}
       s3ForcePathStyle: true          # MinIO는 path-style
-      insecure: false
+      insecure: true
       http_config:
         insecure_skip_verify: true
   limits_config:

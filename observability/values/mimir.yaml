@@ -1,4 +1,6 @@
 global:
+  dnsService: rke2-coredns-rke2-coredns
+  dnsNamespace: kube-system
   extraEnvFrom:
     - secretRef:
         name: lgtm-minio
@@ -51,7 +53,7 @@ mimir:
           region: us-east-1
           access_key_id: ${LGTM_S3_ACCESS_KEY}
           secret_access_key: ${LGTM_S3_SECRET_KEY}
-          insecure: false             # MinIO는 HTTPS(자체서명)
+          insecure: true             # MinIO는 HTTPS(자체서명)
           http:
             insecure_skip_verify: true
     blocks_storage:

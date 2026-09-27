@@ -14,7 +14,7 @@ tempo:
         access_key: ${LGTM_S3_ACCESS_KEY}
         secret_key: ${LGTM_S3_SECRET_KEY}
         forcepathstyle: true
-        insecure: false
+        insecure: true
         insecure_skip_verify: true
   receivers:                          # Jaeger 수신기는 불필요하므로 OTLP만 남김
     otlp:

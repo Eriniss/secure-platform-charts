@@ -10,7 +10,13 @@ envValueFrom:
     secretKeyRef: {name: grafana-db-app, key: password}
 
 persistence:
-  enabled: false                      # 상태는 전부 Postgres에
+  enabled: true
+  type: pvc
+  storageClassName: openebs-lvm-thin
+  accessModes: [ReadWriteOnce]
+  size: 5Gi
+deploymentStrategy:
+  type: Recreate
 
 grafana.ini:
   server:
@@ -26,7 +32,7 @@ grafana.ini:
   auth.generic_oauth:
     enabled: true
     name: Logto
-    client_id: <Logto Client ID>      # 비밀값 아님 — Git에 커밋 가능 (ArgoCD 때와 동일한 판단)
+    client_id: v4hs1k6ia7bqqqdkmefe8
     scopes: openid profile email roles
     auth_url:  https://logto.polipixel.link/oidc/auth
     token_url: https://logto.polipixel.link/oidc/token
@@ -34,7 +40,7 @@ grafana.ini:
     use_pkce: true
     email_attribute_path: email
     login_attribute_path: username
-    role_attribute_path: "contains(roles[*], 'grafana-admin') && 'GrafanaAdmin' || 'Viewer'"
+    role_attribute_path: "contains(roles[*], 'admin') && 'GrafanaAdmin' || 'Viewer'"
     allow_assign_grafana_admin: true
     allow_sign_up: true
 

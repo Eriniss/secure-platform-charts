@@ -1,0 +1,65 @@
+cluster:
+  name: secure-platform              # 모든 신호에 k8s.cluster.name 으로 붙음
+
+destinations:
+  mimir:
+    type: otlp
+    protocol: http
+    url: http://mimir-gateway.observability.svc/otlp     # → /otlp/v1/metrics
+    metrics: {enabled: true}
+    logs:    {enabled: false}
+    traces:  {enabled: false}
+  loki:
+    type: otlp
+    protocol: http
+    url: http://loki-gateway.observability.svc/otlp      # → /otlp/v1/logs
+    metrics: {enabled: false}
+    logs:    {enabled: true}
+    traces:  {enabled: false}
+  tempo:
+    type: otlp
+    protocol: grpc
+    url: tempo.observability.svc:4317
+    tls: {insecure: true}             # 클러스터 내부 평문 gRPC
+    metrics: {enabled: false}
+    logs:    {enabled: false}
+    traces:  {enabled: true}
+
+# ---- 기능 ----
+clusterMetrics:                       # kubelet, cAdvisor, kube-state-metrics
+  enabled: true
+  collector: alloy-metrics
+hostMetrics:                          # node-exporter
+  enabled: true
+  collector: alloy-metrics
+  linuxHosts: {enabled: true}
+clusterEvents:                        # K8s 이벤트 → 로그로 Loki
+  enabled: true
+  collector: alloy-singleton
+podLogsViaOpenTelemetry:              # /var/log/pods → OTLP 로그 (예전 loki.source.file 대체)
+  enabled: true
+  collector: alloy-logs
+applicationObservability:             # 앱이 OTLP를 보낼 수신 창구
+  enabled: true
+  collector: alloy-receiver
+  receivers:
+    otlp:
+      grpc: {enabled: true, port: 4317}
+      http: {enabled: true, port: 4318}
+
+# ---- 수집기 인스턴스 ----
+collectors:
+  alloy-metrics:
+    presets: [clustered, statefulset]
+  alloy-singleton:
+    presets: [singleton]
+  alloy-logs:
+    presets: [daemonset, filesystem-log-reader]
+    alloy:
+      stabilityLevel: public-preview
+  alloy-receiver:
+    presets: [deployment]
+
+telemetryServices:
+  kube-state-metrics: {deploy: true}
+  node-exporter:      {deploy: true}
