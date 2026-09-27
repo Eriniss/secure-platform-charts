@@ -12,5 +12,5 @@ spec:
     - "gitlab.polipixel.link"
   rules:
     - backendRefs:
-        - name: gitlab-webservice-default
+        - name: gitlab-app-webservice-default
           port: 8181

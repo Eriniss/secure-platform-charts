@@ -1,3 +1,4 @@
+# gitlab/values/values-gitlab.yaml
 global:
   hosts:
     domain: polipixel.link
@@ -56,6 +57,19 @@ global:
     backups:
       bucket: gitlab-backup
       tmpBucket: gitlab-backup
+    omniauth:
+      enabled: true
+      allowSingleSignOn:
+        - openid_connect
+      blockAutoCreatedUsers: false
+      syncProfileFromProvider:
+        - openid_connect
+      syncProfileAttributes:
+        - email
+        - name
+      providers:
+        - secret: gitlab-omniauth-openid-connect
+          key: provider
 
   gatewayApi:
     enabled: false
