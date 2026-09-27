@@ -32,7 +32,10 @@ clusterMetrics:                       # kubelet, cAdvisor, kube-state-metrics
 hostMetrics:                          # node-exporter
   enabled: true
   collector: alloy-metrics
-  linuxHosts: {enabled: true}
+  linuxHosts:
+    enabled: true
+    metricsTuning:
+      useDefaultAllowList: false
 clusterEvents:                        # K8s 이벤트 → 로그로 Loki
   enabled: true
   collector: alloy-singleton
