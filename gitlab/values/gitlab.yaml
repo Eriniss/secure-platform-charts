@@ -1,0 +1,53 @@
+global:
+  hosts: { domain: polipixel.link, https: true }
+  ingress: { enabled: false }
+  certmanager: { install: false }   # cert-manager 레포가 이미 관리
+
+  psql:
+    host: gitlab-postgres-rw.gitlab.svc
+    password: { useSecret: true, secret: gitlab-postgres-app, key: password }
+
+  redis:
+    host: gitlab-valkey.gitlab.svc
+    auth: { enabled: true, secret: gitlab-valkey-auth, key: password }
+    kas:
+      host: gitlab-valkey.gitlab.svc
+      auth: { enabled: true, secret: gitlab-valkey-auth, key: password }
+
+  appConfig:
+    object_store:
+      enabled: true
+      connection: { secret: gitlab-object-storage, key: connection }
+    lfs: { bucket: gitlab-data }
+    uploads: { bucket: gitlab-data }
+    # Registry를 안 쓰므로 artifacts/packages도 gitlab-data로 통일
+    artifacts: { bucket: gitlab-data }
+    packages: { bucket: gitlab-data }
+    externalDiffs: { enabled: true, bucket: gitlab-data }
+    dependencyProxy: { enabled: true, bucket: gitlab-data }   # 안 써도 스키마상 필수
+    terraformState: { bucket: gitlab-data }
+    ciSecureFiles: { bucket: gitlab-data }
+    agentPlanContent: { bucket: gitlab-data }
+    backups: { bucket: gitlab-backup, tmpBucket: gitlab-backup }
+
+  gatewayApi: { enabled: false, installEnvoy: false }   # 이전에 겪은 함정, 동일하게 주의
+
+# Registry 완전 비활성화 — Harbor로 대체
+registry: { enabled: false }
+
+postgresql: { install: false }
+redis: { install: false }
+minio: { install: false }
+nginx-ingress: { enabled: false }
+prometheus: { install: false }
+gitlab-runner: { install: false }   # Runner는 별도 릴리스 (6절)
+ai-gateway: { install: false }
+
+gitlab:
+  webservice: { minReplicas: 1, maxReplicas: 1 }
+  sidekiq: { minReplicas: 1, maxReplicas: 1 }
+  gitaly:
+    persistence: { storageClass: openebs-lvm-thin, size: 30Gi }   # RWO — LVM LocalPV와 호환
+  toolbox:
+    backups:
+      objectStorage: { config: { secret: gitlab-backup-storage, key: config } }

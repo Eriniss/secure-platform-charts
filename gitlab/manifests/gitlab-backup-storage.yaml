@@ -1,0 +1,30 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: gitlab-backup-storage
+  namespace: gitlab
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { name: vault-backend, kind: ClusterSecretStore }
+  target:
+    name: gitlab-backup-storage
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data:
+        config: |
+          [default]
+          access_key = {{ .accessKey }}
+          secret_key = {{ .secretKey }}
+          host_base = {{ .hostBase }}
+          host_bucket = {{ .hostBase }}
+          bucket_location = us-east-1
+          use_https = False
+          check_ssl_certificate = False
+  data:
+    - secretKey: accessKey
+      remoteRef: { key: gitlab/backup-storage, property: access_key }
+    - secretKey: secretKey
+      remoteRef: { key: gitlab/backup-storage, property: secret_key }
+    - secretKey: hostBase
+      remoteRef: { key: gitlab/backup-storage, property: host_base }

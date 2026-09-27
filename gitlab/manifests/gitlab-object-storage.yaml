@@ -1,0 +1,30 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: gitlab-object-storage
+  namespace: gitlab
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: gitlab-object-storage
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data:
+        connection: |
+          provider: AWS
+          region: us-east-1
+          aws_access_key_id: {{ .accessKey }}
+          aws_secret_access_key: {{ .secretKey }}
+          endpoint: "{{ .endpoint }}"
+          path_style: true
+  data:
+    - secretKey: accessKey
+      remoteRef: { key: gitlab/object-storage, property: access_key }
+    - secretKey: secretKey
+      remoteRef: { key: gitlab/object-storage, property: secret_key }
+    - secretKey: endpoint
+      remoteRef: { key: gitlab/object-storage, property: endpoint }
