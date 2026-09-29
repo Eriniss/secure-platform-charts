@@ -25,6 +25,9 @@ Logto 전용 CNPG Cluster (cnpg.cluster.create=true, 기본값이자 권장 경�
 {{- if .Values.cnpg.cluster.backup.enabled -}}
 {{- $_ := set $base "backup" (dict "barmanObjectStore" .Values.cnpg.cluster.backup.barmanObjectStore) -}}
 {{- end -}}
+{{- with .Values.cnpg.cluster.plugins -}}
+{{- $_ := set $base "plugins" . -}}
+{{- end -}}
 {{- if .Values.cnpg.cluster.ownerCreateRole -}}
 {{/* CNPG 공식 예시(cluster-example-with-roles.yaml)와 동일한 패턴: bootstrap owner와
 같은 이름의 managed role을 선언해 속성(createrole 등)을 추가로 부여합니다.

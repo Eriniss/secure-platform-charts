@@ -1,0 +1,45 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: cnpg-minio
+  namespace: logto
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: cnpg-minio
+    creationPolicy: Owner
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef:
+        key: dr/cnpg-minio
+        property: accesskey
+    - secretKey: ACCESS_SECRET_KEY
+      remoteRef:
+        key: dr/cnpg-minio
+        property: secretkey
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: logto-cnpg-store
+  namespace: logto
+spec:
+  # 7일 이내 어느 시점으로든 복구 가능하도록 유지
+  retentionPolicy: "7d"
+  configuration:
+    destinationPath: s3://dr-cnpg/
+    endpointURL: http://minio.polipixel.link:9000
+    s3Credentials:
+      accessKeyId:
+        name: cnpg-minio
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: cnpg-minio
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
