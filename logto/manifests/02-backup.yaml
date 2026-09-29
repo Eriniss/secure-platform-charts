@@ -1,0 +1,28 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: logto-db-manual-01
+  namespace: logto
+spec:
+  cluster:
+    name: logto-app-logto
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: logto-db-daily
+  namespace: logto
+spec:
+  # 초 포함 6자리 cron, UTC 기준 (18:00 UTC = 03:00 KST)
+  schedule: "0 0 18 * * *"
+  # 생성 즉시 1회 실행
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: logto-app-logto
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
