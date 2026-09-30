@@ -1,0 +1,14 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: vault-daily
+  namespace: velero
+spec:
+  schedule: "30 18 * * *"             # 5자리 cron, UTC → KST 03:30 (CNPG 백업 30분 뒤)
+  template:
+    includedNamespaces:
+    - vault
+    storageLocation: default
+    snapshotVolumes: true
+    snapshotMoveData: true
+    ttl: 168h0m0s

@@ -1,0 +1,12 @@
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: vault-manual-01
+  namespace: velero
+spec:
+  includedNamespaces:
+  - vault
+  storageLocation: default
+  snapshotVolumes: true
+  snapshotMoveData: true              # ★ 스냅샷 → Kopia → MinIO. 없으면 데이터는 worker01 로컬 스냅샷에만 남음
+  ttl: 168h0m0s                       # 7일 (버킷 락 기간과 맞춤)
