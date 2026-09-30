@@ -14,6 +14,7 @@
 logto:
   endpoint: "https://logto.polipixel.link"
   adminEndpoint: "https://logto-admin.polipixel.link"
+  existingSecret: logto-app-kek
 
 postgresql:
   enabled: false
