@@ -54,6 +54,10 @@ logto:
   # 반드시 Secret을 백업하거나(권장) Vault/ESO(externalSecret.enabled)로 관리하세요.
   # 이 키를 잃어버리면 저장된 커넥터 시크릿 등을 복호화할 수 없습니다.
   secretVaultKEK: ""
+  # SECRET_VAULT_KEK 키를 가진 기존 Secret 이름. 지정하면 차트가 KEK Secret을 만들지 않고
+  # 이 Secret을 참조합니다 (예: Vault → ESO ExternalSecret으로 만든 Secret).
+  # ArgoCD는 helm lookup을 지원하지 않아 자동 생성 KEK가 Sync마다 바뀌므로 GitOps에서는 사실상 필수.
+  existingSecret: ""
 
   # 그 외 Logto가 지원하는 환경변수(SSRF_ALLOWED_ADDRESSES, DATABASE_STATEMENT_TIMEOUT,
   # ADMIN_DISABLE_LOCALHOST 등)는 여기로 직접 추가하세요.

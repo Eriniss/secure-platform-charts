@@ -34,9 +34,3 @@ cnpg:
   database:
     name: logto
     owner: logto
-  plugins:
-  - name: barman-cloud.cloudnative-pg.io
-    isWALArchiver: true                     # 이 플러그인이 WAL 아카이브 담당
-    parameters:
-      barmanObjectName: logto-cnpg-store    # 3.3의 ObjectStore
-      serverName: logto                     # MinIO 경로 접두사 → s3://dr-cnpg/logto/

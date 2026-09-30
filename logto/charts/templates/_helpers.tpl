@@ -137,7 +137,9 @@ uri
 Logto 앱 전용 Secret 이름 (SECRET_VAULT_KEK 등). externalSecret 사용 시 그쪽 Secret과 통합됩니다.
 */}}
 {{- define "logto.appSecretName" -}}
-{{- if .Values.externalSecret.enabled -}}
+{{- if .Values.logto.existingSecret -}}
+{{- .Values.logto.existingSecret -}}
+{{- else if .Values.externalSecret.enabled -}}
 {{- printf "%s-external" (include "logto.fullname" .) -}}
 {{- else -}}
 {{- include "logto.fullname" . -}}
