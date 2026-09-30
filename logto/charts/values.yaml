@@ -198,6 +198,17 @@ cnpg:
     # 않으니, 공용 클러스터 쪽 managed.roles 선언에 createrole: true를 직접 추가해야 합니다
     # (examples/values-cnpg-shared.yaml 참고).
     ownerCreateRole: true
+    extraSpec:
+      managed:
+        roles:
+        - name: logto
+          ensure: present
+          login: true
+          createrole: true
+          inRoles:
+          - logto_tenant_logto
+          - logto_tenant_logto_admin
+          - logto_tenant_logto_default
     # 비우면 CNPG가 기본으로 사용하는 PostgreSQL 이미지를 사용합니다.
     # Harbor 단일 소스 강제 정책이 있다면 미러링한 이미지 경로를 지정하세요.
     imageName: ""
