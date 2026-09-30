@@ -236,7 +236,6 @@ cnpg:
       #     key: ACCESS_SECRET_KEY
     # 위 필드로 표현 안 되는 고급 설정은 여기에 raw 오버레이로 추가하세요.
     # (Cluster.spec에 mergeOverwrite로 병합됩니다)
-    extraSpec: {}
 
   database:
     name: logto
