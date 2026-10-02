@@ -1,0 +1,23 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: logto-restore
+  namespace: logto
+spec:
+  instances: 1
+  storage:
+    size: 2Gi                         # DB 실제 크기 13MB
+    storageClass: openebs-lvm-thin
+  bootstrap:
+    recovery:
+      source: origin
+      recoveryTarget:
+        targetTime: "2026-09-30 13:47:00+00"   # 예: 2026-09-30 07:10:00+00
+  externalClusters:
+  - name: origin
+    plugin:
+      name: barman-cloud.cloudnative-pg.io
+      parameters:
+        barmanObjectName: logto-cnpg-store
+        serverName: logto-app-logto   # 실제 MinIO 경로 (Cluster 이름)
+  # plugins(WAL 아카이버)는 넣지 않음 → 같은 경로에 WAL을 써서 원본 아카이브를 오염시키는 사고 방지
