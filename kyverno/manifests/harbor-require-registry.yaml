@@ -1,0 +1,32 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: harbor-require-registry
+  annotations:
+    pod-policies.kyverno.io/autogen-controllers: none
+    policies.kyverno.io/title: Require Harbor registry
+    policies.kyverno.io/description: 모든 컨테이너 이미지는 harbor.polipixel.link 에서만 가져와야 합니다.
+spec:
+  # 처음에는 Audit. 위반 목록을 PolicyReport로 확인한 뒤 Enforce로 전환한다.
+  validationFailureAction: Audit
+  failurePolicy: Ignore
+  background: true
+  rules:
+    - name: only-harbor
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - harbor-test
+      validate:
+        message: "이미지는 harbor.polipixel.link 에서만 가져올 수 있습니다."
+        pattern:
+          spec:
+            =(ephemeralContainers):
+              - image: "harbor.polipixel.link/*"
+            =(initContainers):
+              - image: "harbor.polipixel.link/*"
+            containers:
+              - image: "harbor.polipixel.link/*"

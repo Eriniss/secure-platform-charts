@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: registry-map
+  namespace: kyverno
+data:
+  docker.io: dockerhub
+  quay.io: quay
+  ghcr.io: ghcr
+  registry.k8s.io: k8s
+  registry.gitlab.com: gitlab
+  ecr-public.aws.com: ecr-public

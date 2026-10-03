@@ -1,0 +1,101 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: harbor-mutate-image-registry
+  annotations:
+    # Deployment 등 상위 리소스는 건드리지 않고 Pod에만 적용 (Argo CD drift 방지)
+    pod-policies.kyverno.io/autogen-controllers: none
+    policies.kyverno.io/title: Rewrite image registry to Harbor proxy cache
+    policies.kyverno.io/description: Pod의 이미지 레지스트리를 registry-map ConfigMap 기준으로 Harbor 프록시 캐시 프로젝트 주소로 치환합니다.
+spec:
+  # 테스트 단계: Kyverno 장애 시 다른 네임스페이스의 Pod 생성이 막히지 않도록 Ignore
+  failurePolicy: Ignore
+  background: false
+  rules:
+    - name: rewrite-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - harbor-test
+      context:
+        - name: registrymap
+          configMap:
+            name: registry-map
+            namespace: kyverno
+      mutate:
+        foreach:
+          - list: "request.object.spec.containers || `[]`"
+            context:
+              - name: ref
+                variable:
+                  jmesPath: 'images.containers."{{ element.name }}"'
+              - name: project
+                variable:
+                  jmesPath: 'registrymap.data."{{ ref.registry }}" || '''''
+              # Docker Hub 공식 이미지(nginx 등)는 library/ 를 붙인다
+              - name: pathfull
+                variable:
+                  jmesPath: 'ref.registry == ''docker.io'' && !contains(ref.path, ''/'') && join('''', [''library/'', ref.path]) || ref.path'
+              - name: tagpart
+                variable:
+                  jmesPath: 'ref.tag && join('''', ['':'', ref.tag]) || '''''
+              - name: digestpart
+                variable:
+                  jmesPath: 'ref.digest && join('''', [''@'', ref.digest]) || '''''
+            # 매핑표에 없는 레지스트리(이미 Harbor 주소 포함)는 건드리지 않는다
+            preconditions:
+              all:
+                - key: "{{ project }}"
+                  operator: NotEquals
+                  value: ""
+            patchStrategicMerge:
+              spec:
+                containers:
+                  - name: "{{ element.name }}"
+                    image: "harbor.polipixel.link/{{ project }}/{{ pathfull }}{{ tagpart }}{{ digestpart }}"
+    - name: rewrite-initcontainers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - harbor-test
+      context:
+        - name: registrymap
+          configMap:
+            name: registry-map
+            namespace: kyverno
+      mutate:
+        foreach:
+          # initContainers가 없는 Pod에서 에러로 요청이 차단되지 않도록 빈 배열 기본값 사용
+          - list: "request.object.spec.initContainers || `[]`"
+            context:
+              - name: ref
+                variable:
+                  jmesPath: 'images.initContainers."{{ element.name }}"'
+              - name: project
+                variable:
+                  jmesPath: 'registrymap.data."{{ ref.registry }}" || '''''
+              - name: pathfull
+                variable:
+                  jmesPath: 'ref.registry == ''docker.io'' && !contains(ref.path, ''/'') && join('''', [''library/'', ref.path]) || ref.path'
+              - name: tagpart
+                variable:
+                  jmesPath: 'ref.tag && join('''', ['':'', ref.tag]) || '''''
+              - name: digestpart
+                variable:
+                  jmesPath: 'ref.digest && join('''', [''@'', ref.digest]) || '''''
+            preconditions:
+              all:
+                - key: "{{ project }}"
+                  operator: NotEquals
+                  value: ""
+            patchStrategicMerge:
+              spec:
+                initContainers:
+                  - name: "{{ element.name }}"
+                    image: "harbor.polipixel.link/{{ project }}/{{ pathfull }}{{ tagpart }}{{ digestpart }}"
