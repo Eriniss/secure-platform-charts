@@ -1,0 +1,18 @@
+falcoctl:
+  config:
+    artifact:
+      install:
+        refs:
+          - falco-rules:5
+          - falco-incubating-rules:5
+          - ghcr.io/falcosecurity/plugins/plugin/container:0.7.4
+      follow:
+        refs:
+          - falco-rules:5
+          - falco-incubating-rules:5
+falco:
+  rules_files:
+    - /etc/falco/falco_rules.yaml
+    - /etc/falco/falco-incubating_rules.yaml
+    - /etc/falco/falco_rules.local.yaml
+    - /etc/falco/rules.d

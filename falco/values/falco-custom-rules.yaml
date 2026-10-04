@@ -1,0 +1,50 @@
+# Falco 커스텀 룰 — 오탐 예외 (2026-10-04)
+# 적용 위치: Helm customRules → /etc/falco/rules.d (stable, incubating 이후 로드)
+# 원칙: 이미지 + 프로세스 + 부모 프로세스(+커맨드)를 함께 걸어 예외 범위를 최소화한다.
+
+# 1) GitLab Gitaly: 시작 시 /tmp 아래에 만든 git 바이너리를 실행 (Critical 오탐)
+#    stable 룰이 제공하는 템플릿 매크로를 교체한다.
+- macro: known_drop_and_execute_activities
+  condition: >
+    (container.image.repository = "registry.gitlab.com/gitlab-org/build/cng/gitaly"
+     and proc.pname = "gitaly"
+     and proc.exepath startswith "/tmp/gitaly-")
+  override:
+    condition: replace
+
+# 2) gitlab-shell 헬스체크가 ps로 /proc/*/environ 을 읽음 (incubating, Warning 오탐)
+- rule: Read environment variable from /proc files
+  condition: >
+    and not (container.image.repository = "registry.gitlab.com/gitlab-org/build/cng/gitlab-shell"
+             and proc.name = "ps"
+             and proc.pname = "healthcheck")
+  override:
+    condition: append
+
+# 3) gitlab-shell sshd의 stdout/stdin 네트워크 리다이렉트 (Notice 오탐)
+#    stable 룰이 제공하는 템플릿 매크로를 교체한다.
+- macro: user_known_stand_streams_redirect_activities
+  condition: >
+    (container.image.repository = "registry.gitlab.com/gitlab-org/build/cng/gitlab-shell"
+     and proc.name in (sshd, sshd-session))
+  override:
+    condition: replace
+
+# 4) gitlab-shell sshd-session의 루프백(::1:2222) UDP 연결 (incubating, Notice 오탐)
+- rule: Unexpected UDP Traffic
+  condition: >
+    and not (container.image.repository = "registry.gitlab.com/gitlab-org/build/cng/gitlab-shell"
+             and proc.name = "sshd-session")
+  override:
+    condition: append
+
+# 5) CloudNativePG: postgres archiver가 WAL 아카이브를 위해 sh를 실행 (Notice 오탐)
+- rule: Run shell untrusted
+  condition: >
+    and not (container.image.repository = "ghcr.io/cloudnative-pg/postgresql"
+             and proc.name = "sh"
+             and proc.pname = "postgres"
+             and proc.cmdline startswith "sh -c -- /controller/manager wal-archive")
+  override:
+    condition: append
+
