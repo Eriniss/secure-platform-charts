@@ -1,0 +1,112 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: todos-db
+  namespace: back-app
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: todos-db
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: todos/db
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: todos-back
+  namespace: back-app
+automountServiceAccountToken: false
+imagePullSecrets:
+  - name: harbor-pull
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todos-back
+  namespace: back-app
+  labels:
+    app: todos-back
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todos-back
+  template:
+    metadata:
+      labels:
+        app: todos-back
+        tier: back
+    spec:
+      serviceAccountName: todos-back
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: back
+          image: harbor.polipixel.link/todos/todos-back:v1
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DB_SECRET_DIR
+              value: /etc/db-secret
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 2
+            failureThreshold: 45
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: db-secret
+              mountPath: /etc/db-secret
+              readOnly: true
+      volumes:
+        - name: db-secret
+          secret:
+            secretName: todos-db
+            defaultMode: 288   # 0440 (fsGroup 65532가 읽을 수 있도록)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todos-back
+  namespace: back-app
+spec:
+  selector:
+    app: todos-back
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

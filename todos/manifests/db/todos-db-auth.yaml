@@ -1,0 +1,27 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: todos-db-auth
+  namespace: db-app
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: todos-db-auth
+    creationPolicy: Owner
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "{{ .username }}"
+        password: "{{ .password }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: todos/db
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: todos/db
+        property: password

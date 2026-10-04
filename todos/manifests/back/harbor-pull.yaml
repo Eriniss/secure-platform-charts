@@ -1,0 +1,27 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: harbor-pull
+  namespace: back-app
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: harbor-pull
+    creationPolicy: Owner
+    template:
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: |
+          {"auths":{"harbor.polipixel.link":{"username":"{{ .username }}","password":"{{ .password }}","auth":"{{ printf "%s:%s" .username .password | b64enc }}"}}}
+  data:
+    - secretKey: username
+      remoteRef:
+        key: harbor/todos-k8s
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: harbor/todos-k8s
+        property: password

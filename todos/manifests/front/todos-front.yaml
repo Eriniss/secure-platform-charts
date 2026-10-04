@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: todos-front
+  namespace: front-app
+automountServiceAccountToken: false
+imagePullSecrets:
+  - name: harbor-pull
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todos-front
+  namespace: front-app
+  labels:
+    app: todos-front
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todos-front
+  template:
+    metadata:
+      labels:
+        app: todos-front
+        tier: front
+    spec:
+      serviceAccountName: todos-front
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: front
+          image: harbor.polipixel.link/todos/todos-front:v2
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todos-front
+  namespace: front-app
+spec:
+  selector:
+    app: todos-front
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
