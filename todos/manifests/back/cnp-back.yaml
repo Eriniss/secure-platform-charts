@@ -1,0 +1,39 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: todos-back
+  namespace: back-app
+spec:
+  description: "todos-back: Gateway(ingress entity)에서 8080만 허용, egress는 DNS와 todos-db 5432만"
+  endpointSelector:
+    matchLabels:
+      app: todos-back
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+  egress:
+    # DNS: L7 dns 규칙을 걸어 Hubble 에서 질의 FQDN 이 보이게 함
+    - toEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": kube-system
+            "k8s:k8s-app": kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    # DB: 역할(primary/replica) 라벨 대신 cnpg.io/cluster 로 선택 (failover 에 안전)
+    - toEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": db-app
+            cnpg.io/cluster: todos-db
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP

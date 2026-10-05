@@ -1,0 +1,19 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: todos-front
+  namespace: front-app
+spec:
+  description: "todos-front: Gateway(ingress entity)에서 8080만 허용, egress 전면 차단"
+  endpointSelector:
+    matchLabels:
+      app: todos-front
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+  egress:
+    - {}
