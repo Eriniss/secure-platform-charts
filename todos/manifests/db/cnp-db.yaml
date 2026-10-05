@@ -4,7 +4,7 @@ metadata:
   name: todos-db
   namespace: db-app
 spec:
-  description: "todos-db: backend만 5432, operator 8000, 인스턴스 간 통신 / egress는 DNS, kube-apiserver, 인스턴스 간"
+  description: "todos-db: backend만 5432, operator 8000, 인스턴스 간 통신 / egress는 DNS, kube-apiserver, 인스턴스 간, MinIO(백업)"
   endpointSelector:
     matchLabels:
       cnpg.io/cluster: todos-db
@@ -27,7 +27,7 @@ spec:
         - ports:
             - port: "8000"
               protocol: TCP
-    # 같은 클러스터 인스턴스 간 (복제 5432, 상태 8000). 현재 1 인스턴스라 지금은 트래픽 없음, 스케일 대비.
+    # 같은 클러스터 인스턴스 간 (복제 5432, 상태 8000)
     - fromEndpoints:
         - matchLabels:
             cnpg.io/cluster: todos-db
@@ -38,7 +38,7 @@ spec:
             - port: "8000"
               protocol: TCP
   egress:
-    # DNS (+ Hubble 에서 FQDN 가시화)
+    # DNS (+ Hubble 에서 FQDN 가시화, toFQDNs 의 전제 조건)
     - toEndpoints:
         - matchLabels:
             "k8s:io.kubernetes.pod.namespace": kube-system
@@ -50,7 +50,7 @@ spec:
           rules:
             dns:
               - matchPattern: "*"
-    # instance manager -> kube-apiserver (RKE2: 6443). audit 에서 dst port 가 다르게 보이면 조정.
+    # instance manager / 플러그인 사이드카 -> kube-apiserver
     - toEntities:
         - kube-apiserver
       toPorts:
@@ -66,4 +66,11 @@ spec:
             - port: "5432"
               protocol: TCP
             - port: "8000"
+              protocol: TCP
+    # 백업/WAL 아카이브 -> MinIO (평문 HTTP 9000). Hubble DROPPED 로 확인한 목적지.
+    - toFQDNs:
+        - matchName: minio.polipixel.link
+      toPorts:
+        - ports:
+            - port: "9000"
               protocol: TCP

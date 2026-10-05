@@ -1,0 +1,11 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: todos-db-manual-01
+  namespace: db-app
+spec:
+  method: plugin
+  cluster:
+    name: todos-db
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
